@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# site
+site/node_modules/
+site/.next/
+site/out/
+site/public/data/*.json
+
+# local data dumps
+data/
+*.csv.gz

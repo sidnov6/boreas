@@ -1,0 +1,21 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: boreas-db
+    environment:
+      POSTGRES_USER: boreas
+      POSTGRES_PASSWORD: boreas
+      POSTGRES_DB: boreas
+    ports:
+      # host 5433 to avoid colliding with any local Postgres on 5432
+      - "5433:5432"
+    volumes:
+      - boreas_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U boreas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  boreas_pgdata:
