@@ -62,7 +62,7 @@ def build_scheduler() -> AsyncIOScheduler:
 
     # Tearsheet regeneration + public site redeploy (report JSON -> next build -> HF Space).
     add(_safe, "cron", hour=22, minute=30, args=[reporter.export_all, "report"], id="report")
-    add(_safe, "cron", hour="1,7,13,19", minute=50, args=[deploy_site, "deploy_site"], id="deploy")
+    add(_safe, "cron", minute=58, args=[deploy_site, "deploy_site"], id="deploy")  # hourly
     return sched
 
 
