@@ -1,13 +1,15 @@
+import ActivityLog from "@/components/ActivityLog";
 import EquityChart from "@/components/EquityChart";
 import Playbook from "@/components/Playbook";
 import StatStrip from "@/components/StatStrip";
 import ThesesTable from "@/components/ThesesTable";
-import { getPlaybook, getSummary, getTheses, isSample } from "@/lib/data";
+import { getActivity, getPlaybook, getSummary, getTheses, isSample } from "@/lib/data";
 
 export default function Home() {
   const summary = getSummary();
   const theses = getTheses();
   const playbook = getPlaybook();
+  const activity = getActivity();
   const sample = isSample();
 
   return (
@@ -20,8 +22,9 @@ export default function Home() {
         <nav className="flex items-center gap-6 text-[0.8125rem]" style={{ color: "var(--ink-2)" }}>
           <a href="#record" className="hover:underline">Record</a>
           <a href="#theses" className="hover:underline">Theses</a>
+          <a href="#activity" className="hidden hover:underline sm:inline">Activity</a>
           <a href="#playbook" className="hover:underline">Playbook</a>
-          <a href="#method" className="hover:underline">Method</a>
+          <a href="#method" className="hidden hover:underline sm:inline">Method</a>
         </nav>
       </header>
 
@@ -57,6 +60,18 @@ export default function Home() {
           <h2 className="mb-6 text-[1.25rem] font-semibold tracking-tight">Theses</h2>
           <ThesesTable theses={theses} />
         </section>
+
+        {activity && (
+          <section id="activity" className="scroll-mt-20 pt-24">
+            <h2 className="mb-2 text-[1.25rem] font-semibold tracking-tight">Agent activity</h2>
+            <p className="mb-6 max-w-[65ch] text-[0.9375rem]" style={{ color: "var(--ink-2)" }}>
+              Every 15 minutes the Sentinel classifies the latest feature frame. Most cycles end in
+              {" "}&quot;nothing&quot; by design; that restraint is part of the strategy. The strip
+              shows the system state at the last cycle.
+            </p>
+            <ActivityLog activity={activity} />
+          </section>
+        )}
 
         <section id="playbook" className="scroll-mt-20 pt-24">
           <h2 className="mb-2 text-[1.25rem] font-semibold tracking-tight">Playbook changelog</h2>

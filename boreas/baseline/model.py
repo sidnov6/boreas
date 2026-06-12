@@ -55,17 +55,21 @@ def _ols(pts: list[tuple[float, float]]) -> QhModel:
 
 
 async def _residual_load_forecast(start: datetime, end: datetime) -> dict[datetime, float]:
-    load = await db.latest_series("load.forecast", start, end)
-    won = await db.latest_series("wind_onshore.forecast", start, end)
-    woff = await db.latest_series("wind_offshore.forecast", start, end)
-    sol = await db.latest_series("solar.forecast", start, end)
-    out = {}
-    for ts, lv in load.items():
-        w = won.get(ts, 0.0) + woff.get(ts, 0.0)
-        s = sol.get(ts)
-        if s is None:
-            continue
-        out[ts] = lv - w - s
+    """Forecast residual load; for history beyond the forecast archive, fall back to
+    actuals (a fine proxy for fitting — forecast ≈ actual at the daily-shape level)."""
+    out: dict[datetime, float] = {}
+    for suffix in (".forecast", ".actual"):
+        load = await db.latest_series(f"load{suffix}", start, end)
+        won = await db.latest_series(f"wind_onshore{suffix}", start, end)
+        woff = await db.latest_series(f"wind_offshore{suffix}", start, end)
+        sol = await db.latest_series(f"solar{suffix}", start, end)
+        for ts, lv in load.items():
+            if ts in out:
+                continue  # forecast (first pass) wins
+            s = sol.get(ts)
+            if s is None:
+                continue
+            out[ts] = lv - won.get(ts, 0.0) - woff.get(ts, 0.0) - s
     return out
 
 

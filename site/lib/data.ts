@@ -72,6 +72,37 @@ export function getPlaybook(): PlaybookVersion[] {
   return load<PlaybookVersion[]>("playbook.json") ?? [];
 }
 
+export type Cycle = {
+  ts: string;
+  kind: string;
+  verdict: string | null;
+  reason: string | null;
+  thesis_id: string | null;
+  pass_reason: string | null;
+  wind_div_z: number | null;
+  residual_load_mw: number | null;
+  da_price_eur: number | null;
+};
+
+export type Activity = {
+  generated_at: string;
+  system_now: {
+    ts: string;
+    residual_load_mw: number | null;
+    wind_div_z: number | null;
+    solar_div_z: number | null;
+    wind_err_mw: number | null;
+    da_price_eur: number | null;
+    ramp_mw_h: number | null;
+    n_observations: number;
+  } | null;
+  cycles: Cycle[];
+};
+
+export function getActivity(): Activity | null {
+  return load<Activity>("activity.json");
+}
+
 export function isSample(): boolean {
   return !fs.existsSync(path.join(process.cwd(), "public/data", "summary.json"));
 }

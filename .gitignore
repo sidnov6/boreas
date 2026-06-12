@@ -17,3 +17,4 @@ site/public/data/*.json
 # local data dumps
 data/
 *.csv.gz
+boreas.log

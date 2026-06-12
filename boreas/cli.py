@@ -30,15 +30,20 @@ def init_db():
 
 
 @app.command()
-def backfill(days: int = typer.Option(365, help="days of ENTSO-E history")):
-    """12-month historical backfill (ENTSO-E in monthly chunks + markets)."""
+def backfill(days: int = typer.Option(365, help="days of history")):
+    """Historical backfill: Energy-Charts (keyless) + markets, plus ENTSO-E when a key is set."""
     from boreas import db
-    from boreas.collectors import entsoe, markets
+    from boreas.collectors import energy_charts, entsoe, markets
+    from boreas.config import settings
 
     async def go():
         await db.init_db()
         await markets.collect(period="2y")
-        await entsoe.backfill(days=days)
+        await energy_charts.backfill(days=days)
+        if settings().entsoe_api_key:
+            await entsoe.backfill(days=days)
+        else:
+            typer.echo("ENTSOE_API_KEY not set; skipped ENTSO-E backfill (Energy-Charts covers it)")
         await db.close_pool()
 
     _run(go())

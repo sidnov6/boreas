@@ -117,10 +117,55 @@ async def export_all() -> dict:
         "content": r["content"],
     } for r in pb]
 
+    # --- agent activity: every cycle is visible, including the ones that decide 'nothing' ---
+    runs = await p.fetch(
+        """
+        SELECT r.id, r.kind, r.feature_ts, r.sentinel_verdict, r.detail, r.started_at,
+               f.frame
+        FROM agent_runs r
+        LEFT JOIN feature_frames f ON f.ts = r.feature_ts
+        ORDER BY r.started_at DESC
+        LIMIT 96
+        """)
+    cycles = []
+    for r in runs:
+        detail = json.loads(r["detail"]) if r["detail"] else {}
+        frame = json.loads(r["frame"]) if r["frame"] else {}
+        cycles.append({
+            "ts": (r["feature_ts"] or r["started_at"]).isoformat(),
+            "kind": r["kind"],
+            "verdict": r["sentinel_verdict"],
+            "reason": detail.get("verdict_reason"),
+            "thesis_id": detail.get("thesis_id"),
+            "pass_reason": detail.get("pass_reason"),
+            "wind_div_z": (frame.get("wind_divergence") or {}).get("zscore"),
+            "residual_load_mw": frame.get("residual_load_mw"),
+            "da_price_eur": frame.get("da_price_eur"),
+        })
+
+    latest_frame = await p.fetchrow("SELECT ts, frame FROM feature_frames ORDER BY ts DESC LIMIT 1")
+    n_obs = await p.fetchval("SELECT COUNT(*) FROM observations")
+    system_now = None
+    if latest_frame:
+        f = json.loads(latest_frame["frame"])
+        system_now = {
+            "ts": latest_frame["ts"].isoformat(),
+            "residual_load_mw": f.get("residual_load_mw"),
+            "wind_div_z": (f.get("wind_divergence") or {}).get("zscore"),
+            "solar_div_z": (f.get("solar_divergence") or {}).get("zscore"),
+            "wind_err_mw": (f.get("wind_error") or {}).get("current_mw"),
+            "da_price_eur": f.get("da_price_eur"),
+            "ramp_mw_h": f.get("ramp_coincidence"),
+            "n_observations": int(n_obs),
+        }
+    activity = {"generated_at": datetime.now(UTC).isoformat(), "system_now": system_now,
+                "cycles": cycles}
+
     out = _out_dir()
     (out / "summary.json").write_text(json.dumps(summary, indent=1))
     (out / "theses.json").write_text(json.dumps(theses_out, indent=1))
     (out / "playbook.json").write_text(json.dumps(playbook_out, indent=1))
-    log.info("report exported to %s (%d theses, %d playbook versions)",
-             out, len(theses_out), len(playbook_out))
+    (out / "activity.json").write_text(json.dumps(activity, indent=1))
+    log.info("report exported to %s (%d theses, %d playbook versions, %d cycles)",
+             out, len(theses_out), len(playbook_out), len(cycles))
     return summary

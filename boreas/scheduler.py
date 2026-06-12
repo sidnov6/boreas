@@ -43,6 +43,8 @@ def build_scheduler() -> AsyncIOScheduler:
     # Layer 1: collectors, each source on its own cadence with rate-limit awareness.
     add(_safe, "cron", minute="2,17,32,47", args=[entsoe.collect, "entsoe"], id="entsoe")
     add(_safe, "cron", minute="4,19,34,49", args=[energy_charts.collect, "energy_charts"], id="echarts")
+    add(_safe, "cron", minute="0,30", args=[energy_charts.collect_forecasts, "energy_charts_fc"],
+        id="echarts_fc")
     add(_safe, "cron", minute=8, args=[open_meteo.collect, "open_meteo"], id="meteo")
     add(_safe, "cron", minute="6,21,36,51", args=[netztransparenz.collect, "netztransparenz"], id="ntp")
     add(_safe, "cron", hour=6, minute=10, args=[markets.collect, "markets"], id="markets")
@@ -58,9 +60,20 @@ def build_scheduler() -> AsyncIOScheduler:
     add(_safe, "cron", minute=20, args=[settle_due_orders, "settle"], id="settle")
     add(_safe, "cron", minute=45, args=[reflector.reflect_settled, "reflect"], id="reflect")
 
-    # Nightly tearsheet regeneration for the public site.
+    # Tearsheet regeneration + public site redeploy (report JSON -> next build -> HF Space).
     add(_safe, "cron", hour=22, minute=30, args=[reporter.export_all, "report"], id="report")
+    add(_safe, "cron", hour="1,7,13,19", minute=50, args=[deploy_site, "deploy_site"], id="deploy")
     return sched
+
+
+async def deploy_site():
+    """Rebuild and push the track-record site so the public record stays current."""
+    proc = await asyncio.create_subprocess_exec(
+        "bash", "scripts/deploy_site.sh",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    out, _ = await proc.communicate()
+    tail = out.decode(errors="replace").strip().splitlines()[-3:]
+    log.info("deploy_site rc=%s: %s", proc.returncode, " | ".join(tail))
 
 
 async def main():

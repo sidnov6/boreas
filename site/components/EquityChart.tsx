@@ -12,6 +12,34 @@ const eur = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
 export default function EquityChart({ curve }: { curve: EquityPoint[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  if (curve.length === 0) {
+    return (
+      <figure
+        className="rounded-lg border p-4"
+        style={{ background: "var(--surface)", borderColor: "var(--hairline)" }}
+      >
+        <figcaption className="text-[0.875rem] font-medium">Cumulative realized P&L, EUR</figcaption>
+        <p className="py-16 text-center text-[0.875rem]" style={{ color: "var(--ink-2)" }}>
+          No settled trades yet. The curve starts with the first settlement; until then the agent
+          activity below shows the system working.
+        </p>
+      </figure>
+    );
+  }
+  return <ChartInner curve={curve} hover={hover} setHover={setHover} svgRef={svgRef} />;
+}
+
+function ChartInner({
+  curve,
+  hover,
+  setHover,
+  svgRef,
+}: {
+  curve: EquityPoint[];
+  hover: number | null;
+  setHover: (v: number | null) => void;
+  svgRef: React.RefObject<SVGSVGElement | null>;
+}) {
 
   const { path, area, points, yTicks, y0 } = useMemo(() => {
     const xs = curve.map((_, i) => i);

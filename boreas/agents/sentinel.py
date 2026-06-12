@@ -40,12 +40,18 @@ async def classify(frame: FeatureFrame) -> SentinelVerdict:
     screened = deterministic_screen(frame)
     if screened is not None:
         return SentinelVerdict(level=screened, reason="deterministic screen: no triggers")
-    verdict = await parse_call(
-        model=settings().sentinel_model,
-        system=SYSTEM,
-        user=f"Feature snapshot:\n{frame.model_dump_json(indent=2)}\n\nClassify it.",
-        schema=SentinelVerdict,
-        max_tokens=300,
-    )
+    try:
+        verdict = await parse_call(
+            model=settings().sentinel_model,
+            system=SYSTEM,
+            user=f"Feature snapshot:\n{frame.model_dump_json(indent=2)}\n\nClassify it.",
+            schema=SentinelVerdict,
+            max_tokens=300,
+        )
+    except Exception as e:  # noqa: BLE001 — degrade honestly when no LLM is configured
+        log.warning("sentinel LLM unavailable (%s); downgrading to 'interesting'", type(e).__name__)
+        return SentinelVerdict(
+            level="interesting",
+            reason="deterministic trigger fired but LLM unavailable (set ANTHROPIC_API_KEY to act)")
     log.info("sentinel: %s (%s)", verdict.level, verdict.reason)
     return verdict
