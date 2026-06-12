@@ -58,7 +58,7 @@ async def _residual_load_forecast(start: datetime, end: datetime) -> dict[dateti
     """Forecast residual load; for history beyond the forecast archive, fall back to
     actuals (a fine proxy for fitting — forecast ≈ actual at the daily-shape level)."""
     out: dict[datetime, float] = {}
-    for suffix in (".forecast", ".actual"):
+    for suffix in (".forecast", ".forecast_da", ".actual"):
         load = await db.latest_series(f"load{suffix}", start, end)
         won = await db.latest_series(f"wind_onshore{suffix}", start, end)
         woff = await db.latest_series(f"wind_offshore{suffix}", start, end)

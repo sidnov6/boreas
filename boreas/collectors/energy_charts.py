@@ -101,7 +101,7 @@ async def backfill(days: int = 365, chunk_days: int = 30) -> int:
         while cursor < end:
             chunk_end = min(cursor + timedelta(days=chunk_days), end)
             params = {"country": "de", "start": cursor.strftime("%Y-%m-%d"),
-                      "end": chunk_end.strftime("%Y-%m-%d")}
+                      "end": (chunk_end + timedelta(days=1)).strftime("%Y-%m-%d")}
             rows: list[Obs] = []
             data = await _get_json(client, "/public_power", params)
             await asyncio.sleep(CALL_SPACING_S)
@@ -131,7 +131,8 @@ async def backfill(days: int = 365, chunk_days: int = 30) -> int:
 async def collect(hours_back: int = 48) -> int:
     now = datetime.now(UTC)
     start = (now - timedelta(hours=hours_back)).strftime("%Y-%m-%d")
-    end = now.strftime("%Y-%m-%d")
+    # Energy-Charts treats `end` as exclusive at day granularity: ask through tomorrow.
+    end = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     rows: list[Obs] = []
 
     async with httpx.AsyncClient(timeout=60) as client:

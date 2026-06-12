@@ -74,17 +74,23 @@ def zscore(value: float, history: list[float]) -> float | None:
 
 async def compute_frame(now: datetime | None = None) -> FeatureFrame:
     now = (now or datetime.now(UTC)).replace(second=0, microsecond=0)
-    past6 = now - timedelta(hours=6)
+    past6 = now - timedelta(hours=12)  # actuals publish with lag; error stats still window to 6h
     fwd36 = now + timedelta(hours=36)
 
+    async def forecast(base: str) -> dict[datetime, float]:
+        """TSO view: day-ahead vintage as floor, 'current' intraday revisions on top."""
+        da = await db.latest_series(f"{base}.forecast_da", past6, fwd36)
+        cur = await db.latest_series(f"{base}.forecast", past6, fwd36)
+        return {**da, **cur}
+
     load_a = await db.latest_series("load.actual", past6, now)
-    load_f = await db.latest_series("load.forecast", past6, fwd36)
+    load_f = await forecast("load")
     solar_a = await db.latest_series("solar.actual", past6, now)
-    solar_f = await db.latest_series("solar.forecast", past6, fwd36)
+    solar_f = await forecast("solar")
     won_a = await db.latest_series("wind_onshore.actual", past6, now)
-    won_f = await db.latest_series("wind_onshore.forecast", past6, fwd36)
+    won_f = await forecast("wind_onshore")
     woff_a = await db.latest_series("wind_offshore.actual", past6, now)
-    woff_f = await db.latest_series("wind_offshore.forecast", past6, fwd36)
+    woff_f = await forecast("wind_offshore")
 
     wind_a = _sum_series(won_a, woff_a)
     wind_f = _sum_series(won_f, woff_f)
@@ -94,9 +100,11 @@ async def compute_frame(now: datetime | None = None) -> FeatureFrame:
     frame.solar_error = error_stats(solar_a, solar_f, now)
     frame.wind_error = error_stats(wind_a, wind_f, now)
 
-    l_now, w_now, s_now = _nearest(load_a, now), _nearest(wind_a, now), _nearest(solar_a, now)
-    if None not in (l_now, w_now, s_now):
-        frame.residual_load_mw = l_now - w_now - s_now
+    # Actuals publish with a lag; use the latest timestamp all three series share.
+    common_recent = sorted(set(load_a) & set(wind_a) & set(solar_a))
+    if common_recent:
+        t_star = common_recent[-1]
+        frame.residual_load_mw = load_a[t_star] - wind_a[t_star] - solar_a[t_star]
     l_fc, w_fc, s_fc = _nearest(load_f, now), _nearest(wind_f, now), _nearest(solar_f, now)
     if None not in (l_fc, w_fc, s_fc):
         frame.residual_load_forecast_mw = l_fc - w_fc - s_fc
