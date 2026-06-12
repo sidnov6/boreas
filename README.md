@@ -2,6 +2,8 @@
 
 An autonomous agent that paper-trades the German power market, in public.
 
+**Live track record:** [sidnov6-boreas.static.hf.space](https://sidnov6-boreas.static.hf.space) · **Source:** [github.com/sidnov6/boreas](https://github.com/sidnov6/boreas)
+
 BOREAS builds its own wind and solar nowcast from DWD ICON-D2 weather fields (Open-Meteo),
 compares it with the TSO forecasts behind the EPEX day-ahead auction (ENTSO-E Transparency),
 and takes paper positions on 15-minute products when the two disagree — then publishes every
